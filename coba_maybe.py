@@ -1,6 +1,5 @@
 import cv2
 from deepface import DeepFace
-from datetime import datetime
 
 # Load Haar Cascade untuk face detection
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
@@ -18,9 +17,6 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
-    # Ambil waktu sekarang
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     # Prediksi umur untuk setiap wajah
     for (x, y, w, h) in faces:
         face = frame[y:y+h, x:x+w]  # Potong wajah
@@ -28,13 +24,10 @@ while True:
             result = DeepFace.analyze(face, actions=['age'], enforce_detection=False)
             age = result[0]['age']
             
-            # Tampilkan kotak di wajah
+            # Gambar kotak di wajah dan tampilkan umur
             cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
             cv2.putText(frame, f"Age: {age}", (x, y-10), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            
-            # Print umur dan waktu di terminal
-            print(f"[{current_time}] Age detected: {age}")
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         except Exception as e:
             print("Error:", e)
 
