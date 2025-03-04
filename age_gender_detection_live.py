@@ -4,6 +4,7 @@ import cv2
 import os
 from datetime import datetime
 from pytz import timezone
+import pika
 
 # Inisialisasi tracker
 tracker = CentroidTracker(maxDisappeared=80, maxDistance=90)
@@ -19,6 +20,13 @@ face_data_file = "face_data_log.txt"
 H = None
 W = None
 trackableObjects = {}
+
+
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='face_data')
+
+    
 
 # Kelas untuk melacak objek
 class TrackableObject:
@@ -43,13 +51,17 @@ def save_face_data(to, img):
     img_path = os.path.join(detected_faces_folder, f"face_{to.objectID}_{to.date}_{to.time.replace(':', '-')}.jpg")
     cv2.imwrite(img_path, img)
     to.img_path = img_path
-    with open(face_data_file, "a") as file:
-        file.write(f"ID: {to.objectID}, Date: {to.date}, Time: {to.time}, Age: {to.age}, Image Path: {to.img_path}\n")
+    massage = f"ID: {to.objectID}, Date: {to.date}, Time: {to.time}, Age: {to.age}, Image Path: {to.img_path}"
+    channel.basic_publish(exchange='', routing_key='face_data', body=massage)
+    # with open(face_data_file, "a") as file:
+    #     file.write(f"ID: {to.objectID}, Date: {to.date}, Time: {to.time}, Age: {to.age}, Image Path: {to.img_path}\n")
+    
     print(f"Saved face data - ID: {to.objectID}, Date: {to.date}, Time: {to.time}, Age: {to.age}, Image Path: {to.img_path}")
 
 if __name__ == "__main__":
     cap = cv2.VideoCapture(1)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE,  0)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    cap.set(cv2.CAP_PROP_FPS, 15) 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # Atur resolusi lebar
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # Atur resolusi tinggi
     while True:
@@ -60,7 +72,7 @@ if __name__ == "__main__":
             detecbox = []
             face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray,scaleFactor=1.05, minNeighbors=8, minSize=(15, 15))
+            faces = face_cascade.detectMultiScale(gray,scaleFactor=1.1, minNeighbors=4, minSize=(10, 10), maxSize=(500, 500))
             
             for (x, y, w, h) in faces:
                 detecbox.append((x, y, x + w, y + h))
